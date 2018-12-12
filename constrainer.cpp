@@ -19,12 +19,12 @@ int constrainer::constrain(token t) {
 		// TO DO: Get the last symbol accessed from the symbol table:
 		//    this will be the variable on the LHS.
 		// "Remember" the data type in constType: constType = ...
-		constType = symTbl.search(t.sref->data, currScope);
+		constType = symTbl.getLastAccessed();
 		break;
 	case NTC_RHS_END:
 		// finished assignment statement
 		// TO DO: stop constraining the assignment statement
-		rc = TOK_SCANERR;
+		rc = -1;
 		break;
 	case TOK_IDENT:
 		// TO DO:
@@ -34,10 +34,10 @@ int constrainer::constrain(token t) {
 		// - If the insert fails because the ident is already in
 		//   the table, print the following error message:
 		//   "Constrainer: symbol re-declared " << NAME_OF_IDENT << endl;
-		// - If the insert fails for any reason, return -1 (error)
+		// - If the insert fails for any reason, rc = -1 (error)
 		// If we are not inserting idents (parsing executable code)
 		// - make sure the ident is already declared in this scope.
-		//   If it is not, print the following error and return -1
+		//   If it is not, print the following error and rc = -1
 		// "constrain: identifier undefined: " << NAME_OF_IDENT << endl;
 		// - If we are doing type checking on an assignment statement
 		//   and the type of this ident is not the same as the
@@ -47,21 +47,22 @@ int constrainer::constrain(token t) {
 		if (insertIdents){
 			int insertResult = symTbl.insert(t, currScope);
 			if (insertResult == SYMT_ALREADY_EXISTS){
-				cout<<"Constrainer: symbol re-declared " << t.tokId << endl;
+				cout<<"Constrainer: symbol re-declared " << t.sref->data << endl;
 			}
 			else if (insertResult < 0){
-				return -1;
+				rc = -1;
 			}
 			else if(insertResult == 0){
 				return insertResult;
 			}
 		}
 		else if (!insertIdents){
-
+			int result = symTbl.search(t.sref->data, currScope);
+			if (result==-1){
+				cout<<"constrain: identifier undefined: " << t.sref->data << endl;	
+				rc = -1;
+			}
 		}
-
-		
-		insertIdents = false;
 		break;
 	case TOK_INT_LIT: case TOK_CHAR_LIT: case TOK_REAL_LIT:
 		// TO DO:
@@ -70,7 +71,11 @@ int constrainer::constrain(token t) {
 		// constraint type, print this error message
 		// "constrain: data type does not match LHS of assignment: " << LITERAL_VALUE << endl;
 		
-		insertIdents = false;
+		if(constType!=0){
+			if(t.tokId != constType){
+				cout<<"constrain: data type does not match LHS of assignment: " << t.sref->data << endl;
+			}
+		}
 
 		break;
 	case TOK_INTEGER: case TOK_REAL: case TOK_STRING:
